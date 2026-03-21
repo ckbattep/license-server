@@ -1,0 +1,12 @@
+{
+  "expires": "2027-03-21T20:36:37.022088Z",
+  "features": [
+    "api",
+    "web",
+    "cli"
+  ],
+  "id": "LIC-2026-03-22-001",
+  "product": "License Server v1.0",
+  "signature_algorithm": "ed25519",
+  "user": "LawBox"
+}

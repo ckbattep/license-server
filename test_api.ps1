@@ -1,0 +1,22 @@
+# test_api.ps1
+cd C:\IT\CitoLaw\license-server
+
+$uri = "http://127.0.0.1:8080/api/verify"
+
+# Загружаем лицензию и подпись
+$license = Get-Content -Raw "app/licenses/lic_2026-03-21-001.json" | ConvertFrom-Json
+$sig     = Get-Content -Raw "app/licenses/lic_2026-03-21-001.sig"
+
+# Отправляем POST
+$body = @{
+    payload   = $license
+    signature = $sig.Trim()
+} | ConvertTo-Json
+
+Write-Host "`n[🧪] Тест API: POST /api/verify" -ForegroundColor Cyan
+Write-Host "Payload:" -ForegroundColor Yellow
+$body | Format-List
+
+$response = Invoke-RestMethod -Uri $uri -Method Post -Body $body -ContentType "application/json"
+Write-Host "`n✅ API Response:" -ForegroundColor Green
+$response | Format-List

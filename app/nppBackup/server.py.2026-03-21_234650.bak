@@ -1,0 +1,36 @@
+# app/server.py
+
+from flask import Flask, request, jsonify
+import os
+import sys
+
+sys.path.insert(0, r"C:\IT\CitoLaw\license-server")
+
+from app.security.ed25519 import verify_signature
+
+app = Flask(__name__)
+
+@app.route('/api/verify', methods=['POST'])
+def verify():
+    """
+    🔍 API endpoint: verify license signature.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload"}), 400
+
+    payload = data.get("payload")
+    signature = data.get("signature")
+
+    if not payload or not signature:
+        return jsonify({"error": "Missing 'payload' or 'signature'"}), 400
+
+    try:
+        ok = verify_signature(payload, signature)
+        return jsonify({"valid": ok})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)

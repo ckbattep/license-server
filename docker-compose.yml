@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  license-server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # 🔒 Если .env не в контейнере — читаем из хоста
+      - LICENSE_API_KEY=${LICENSE_API_KEY}
+    volumes:
+      # 📁 Сохраняем лицензии на хосте (не теряются при перезапуске)
+      - ./app/licenses:/app/app/licenses

@@ -1,0 +1,135 @@
+# test_integration.ps1
+# Запускать из: C:\IT\CitoLaw\license-server
+
+$ErrorActionPreference = "Continue"
+
+Write-Host @"
+╔════════════════════════════════════════════════════════════╗
+║         🔐 License Server — Integration Test v1.0          ║
+╚════════════════════════════════════════════════════════════╝
+"@ -ForegroundColor Cyan
+
+# 📊 Шкала прогресса (0/3 → 3/3)
+function Show-Progress {
+    param(
+        [int]$Current,
+        [int]$Total = 3,
+        [string]$Label,
+        [string]$Status = "⏳"
+    )
+    $percent = [math]::Round(($Current / $Total) * 100)
+    $barLength = 30
+    $filled = [math]::Round($percent / (100 / $barLength))
+    $empty = $barLength - $filled
+
+    Write-Host "[$Status] $Label" -ForegroundColor Yellow -NoNewline
+    Write-Host " | " -NoNewline
+    Write-Host ("█" * $filled) -ForegroundColor Green -NoNewline
+    Write-Host ("░" * $empty) -NoNewline
+    Write-Host " $percent% ($Current/$Total)" -ForegroundColor Cyan
+}
+
+# =========================
+# 🧪 ЭТАП 1: Генерация лицензии и подпись
+# =========================
+Write-Host "`n[1] 📄 Генерация лицензии и подпись`n" -ForegroundColor Cyan
+
+Show-Progress -Current 1 -Label "Создание license.json"
+
+$license = @{
+    id              = "LIC-2026-03-21-001"
+    user            = "CitoLaw"
+    product         = "License Server v1.0"
+    expires         = "2027-03-21T00:00:00Z"
+    features        = @("api", "web", "cli")
+    signature_algorithm = "ed25519"
+}
+
+# Сохраняем license.json
+$licensePath = ".\app\licenses\lic_2026-03-21-001.json"
+os.makedirs(os.path.dirname($licensePath), exist_ok=True)
+
+python -c "
+import json, os
+
+license = {
+    'id': 'LIC-2026-03-21-001',
+    'user': 'CitoLaw',
+    'product': 'License Server v1.0',
+    'expires': '2027-03-21T00:00:00Z',
+    'features': ['api', 'web', 'cli'],
+    'signature_algorithm': 'ed25519'
+}
+
+os.makedirs('app/licenses', exist_ok=True)
+
+with open('app/licenses/lic_2026-03-21-001.json', 'w', encoding='utf-8') as f:
+    json.dump(license, f, indent=2, sort_keys=True)
+"
+
+Write-Host "✅ license.json создан: `app\licenses\lic_2026-03-21-001.json`" -ForegroundColor Green
+
+Show-Progress -Current 2 -Label "Подпись license.json"
+
+python -c "
+import os, sys
+sys.path.insert(0, '.')
+from app.security.ed25519 import sign_payload
+
+with open('app/licenses/lic_2026-03-21-001.json', 'r', encoding='utf-8') as f:
+    license = json.load(f)
+
+signed = sign_payload(license)
+sig_b64 = signed['signature']
+
+# Сохраняем signature.txt
+with open('app/licenses/lic_2026-03-21-001.sig', 'w') as f:
+    f.write(sig_b64)
+
+print('✅ Signature saved: app/licenses/lic_2026-03-21-001.sig')
+"
+
+Write-Host "✅ signature.txt сохранён" -ForegroundColor Green
+
+# =========================
+# 🧪 ЭТАП 2: Верификация подписи
+# =========================
+Write-Host "`n[2] 🔍 Верификация подписи`n" -ForegroundColor Cyan
+
+Show-Progress -Current 3 -Label "verify_signature()"
+
+python -c "
+import os, sys
+sys.path.insert(0, '.')
+from app.security.ed25519 import verify_signature
+
+with open('app/licenses/lic_2026-03-21-001.json', 'r', encoding='utf-8') as f:
+    license = json.load(f)
+
+with open('app/licenses/lic_2026-03-21-001.sig', 'r') as f:
+    sig_b64 = f.read()
+
+ok = verify_signature(license, sig_b64)
+
+if ok:
+    print('✅ verify_signature() → True')
+else:
+    raise RuntimeError('❌ verify_signature() failed!')
+"
+
+Write-Host "✅ Подпись верифицирована" -ForegroundColor Green
+
+# =========================
+# 🎉 Финал
+# =========================
+Write-Host @"
+╔════════════════════════════════════════════════════════════╗
+║         ✅ Интеграционный тест пройден!                    ║
+╚════════════════════════════════════════════════════════════╝
+"@ -ForegroundColor Green
+
+Write-Host "`n[ℹ️] Файлы:" -ForegroundColor Cyan
+Write-Host "  • app/licenses/lic_2026-03-21-001.json" -ForegroundColor Yellow
+Write-Host "  • app/licenses/lic_2026-03-21-001.sig" -ForegroundColor Yellow
+
+Write-Host "`n[ℹ️] Следующий шаг: API-тест (POST /api/verify)" -ForegroundColor Cyan
