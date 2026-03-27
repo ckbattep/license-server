@@ -1,0 +1,46 @@
+# В PowerShell (локально)
+cd C:\IT\CitoLaw\license-server
+
+# Запиши YAML в файл
+@"
+name: Test Flask Server
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install flask python-dotenv pytest requests
+
+      - name: Generate API key (mock)
+        run: |
+          echo "LICENSE_API_KEY=prod-key-$(python -c 'import secrets; print(secrets.token_hex(8))')" > .env
+
+      - name: Run Flask server
+        run: |
+          python app/server.py &
+          sleep 3
+
+      - name: Test /api/verify
+        run: |
+          curl -X POST http://127.0.0.1:8080/api/verify \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: prod-key-$(python -c 'import secrets; print(secrets.token_hex(8))')" \
+            -d '{"payload": {"test": true}, "signature": "mock"}'
+"@ | Set-Content -Path ".github/workflows/test-flask.yml"

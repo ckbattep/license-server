@@ -1,3 +1,6 @@
 <NotepadPlus>
-    <Project name="license-server" />
+    <Project name="license-server">
+        <File name="C:\IT\GitHub.txt" />
+        <File name="C:\IT\Q4_K_S.txt" />
+    </Project>
 </NotepadPlus>
